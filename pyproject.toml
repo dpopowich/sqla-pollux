@@ -1,0 +1,49 @@
+[project]
+name = "sqla-pollux"
+version = "0.14.0"
+description = "Write your python ORMs once: from SQLAlchemy through your pydantic-validated REST API."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Daniel Popowich", email = "danielpopowich@gmail.com" }
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Database :: Front-Ends",
+    "Topic :: Internet",
+    "Topic :: Software Development :: Libraries",
+]
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.11.7",
+    "pyyaml>=6.0.2",
+    "sqlalchemy[asyncio]>=2.0.42",
+]
+
+[dependency-groups]
+dev = [
+    "grip>=4.6.2",
+    "ipython>=9.4.0",
+    "pytest>=8.4.1",
+    "ruff>=0.12.7",
+]
+
+[project.optional-dependencies]
+
+demos = [
+    "aiosqlite>=0.21.0",
+    "faker>=37.5.3",
+]
+
+[build-system]
+requires = ["uv_build>=0.8.4,<0.9.0"]
+build-backend = "uv_build"
