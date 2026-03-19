@@ -339,5 +339,9 @@ def on_after_rollback(session):
 @event.listens_for(Mapper, "mapper_configured")
 def add_apispec(_mapper, model):
     """Add attributes to models"""
+    if not hasattr(model, '__apispec_excludes__'):
+        # we only process apispec-aware models
+        return
+
     model.apispec = generate_model_apispec(model)
     model.objects = model.select()
