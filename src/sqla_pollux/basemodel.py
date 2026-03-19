@@ -30,7 +30,15 @@ CHUNK_SIZE = 2**16  # 64K
 
 # Note: AsyncAttrs adds `awaitable_attrs` attribute to all instances.  See:
 # https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html#sqlalchemy.ext.asyncio.AsyncAttrs
-class BaseModel(sa.ext.asyncio.AsyncAttrs, Base):
+# We add the mixin if we're using sqlalchemy >= 2.0
+SA_VERSION = tuple(int(v) for v in sa.__version__.split('.'))
+BASES = (
+    (sa.ext.asyncio.AsyncAttrs, Base)
+    if SA_VERSION >= (2,0)
+    else (Base, )
+)
+
+class BaseModel(*BASES):
     """Base model for all SQLAlchemy models"""
 
     __abstract__ = True

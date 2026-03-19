@@ -70,7 +70,7 @@ Write once and annotate!  Define your models in **pure SQLAlchemy**, annotating 
 it should be serialized for our REST API. A SQLAlchemy event trigger will generate one [Pydantic
 BaseModel](https://docs.pydantic.dev/latest/api/base_model/) for each of our CRU operations.  We can
 use the pydantic models with a web application framework (e.g, aiohttp, fastapi) to serialize and
-validate date in-and-out of our server.
+validate data in-and-out of our server.
 
 Example: using the above user model, we define a SQLAlchemy model, annotating each column using stock
 SQLAlchemy column definitions.  Note the use of `info=apispec.{SPEC}()` which annotates how the
