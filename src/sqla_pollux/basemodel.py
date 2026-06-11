@@ -406,7 +406,7 @@ class BaseModel(*BASES):
 
         Returns - boolean
         """
-        from_ = from_ or cls
+        from_ = from_ if from_ is not None else cls
         subquery = sa.select(1).select_from(from_).where(*where)
         query = sa.select(subquery.exists())
 
