@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import (
-    declarative_base,
+    DeclarativeBase,
     Mapper,
     Session,
     sessionmaker,
@@ -50,7 +50,9 @@ MAX_SQL_QUERY_ARGUMENTS = 4000
 
 
 # ORM base class
-Base = declarative_base()
+class Base(DeclarativeBase):
+    """Default base for ORM"""
+    pass
 
 # session factory - bound to engine in sqla_init() which must be called on
 # application initialization prior to first database access
@@ -226,15 +228,15 @@ async def run_sync(fn, *args, **kwargs):
         return await conn.run_sync(fn, *args, **kwargs)
 
 
-async def drop_all():
+async def drop_all(metadata=Base.metadata):
     """Drop all tables - must have already called sqla_init()"""
     # drop tables
-    await run_sync(Base.metadata.drop_all)
+    await run_sync(metadata.drop_all)
 
 
-async def create_all():
+async def create_all(metadata=Base.metadata):
     """Create all tables - must have already called sqla_init()"""
-    await run_sync(Base.metadata.create_all)
+    await run_sync(metadata.create_all)
 
 
 ######################################################################

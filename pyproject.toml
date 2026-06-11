@@ -1,6 +1,6 @@
 [project]
 name = "sqla-pollux"
-version = "0.15.0"
+version = "0.17.0"
 description = "Write your python ORMs once: from SQLAlchemy through your pydantic-validated REST API."
 readme = "README.md"
 license = "MIT"
@@ -24,16 +24,18 @@ classifiers = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    "pydantic>=2.11.7",
-    "pyyaml>=6.0.2",
+    "pydantic==2.13.4",
+    "pyyaml==6.0.3",
     "sqlalchemy[asyncio]>=1.4.54",
 ]
 
 [dependency-groups]
 dev = [
+    "asyncpg>=0.30.0",
     "grip>=4.6.2",
     "ipython>=9.4.0",
     "pytest>=8.4.1",
+    "pytest-asyncio>=0.24.0",
     "ruff>=0.12.7",
 ]
 
@@ -44,6 +46,19 @@ demos = [
     "faker>=37.5.3",
 ]
 
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+
 [build-system]
 requires = ["uv_build>=0.8.4,<0.9.0"]
 build-backend = "uv_build"
+
+[tool.uv.build-backend]
+source-exclude = [
+    ".*",
+    "*\\~",
+    "tests",
+    "tmp",
+]

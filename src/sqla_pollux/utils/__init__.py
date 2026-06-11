@@ -23,6 +23,9 @@ from .apispec import (
     ApiSpec,
     generate_model_apispec,
 )
+from .views import (
+    create_view,
+)
 
 # For password hash generation. See
 # https://docs.python.org/3.12/library/hashlib.html#hashlib.pbkdf2_hmac. Care
@@ -39,6 +42,7 @@ __all__ = [
     "apispec",
     "CachedData",
     "canonical_filename",
+    "create_view",
     "dumps",
     "generate_model_apispec",
     "is_email_valid",
