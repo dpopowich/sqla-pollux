@@ -21,6 +21,7 @@ from .exceptions import (
 
 from .utils import (
     apispec,
+    create_view,
     dumps,
     loads,
 )
@@ -35,6 +36,7 @@ from .utils.sqla import (
 
 from .basemodel import (
     BaseModel,
+    BaseModelMixin,
     populate_module_with_apispec,
 )
 

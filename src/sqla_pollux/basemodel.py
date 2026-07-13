@@ -1,6 +1,7 @@
 """Abstract base class for all ORMs"""
 
 # stdlib imports
+from collections.abc import Sequence
 import inspect
 import logging
 import sys
@@ -33,19 +34,19 @@ CHUNK_SIZE = 2**16  # 64K
 # We add the mixin if we're using sqlalchemy >= 2.0
 SA_VERSION = tuple(int(v) for v in sa.__version__.split('.'))
 BASES = (
-    (sa.ext.asyncio.AsyncAttrs, Base)
+    (sa.ext.asyncio.AsyncAttrs,)
     if SA_VERSION >= (2,0)
-    else (Base, )
+    else ()
 )
 
-class BaseModel(*BASES):
-    """Base model for all SQLAlchemy models"""
+class BaseModelMixin(*BASES):
+    """Base model mixin for all SQLAlchemy models"""
 
-    __abstract__ = True
-
-    __mapper_args__ = dict(
-        eager_defaults=True,
-    )
+    # for versions < 2.0 we need eager_defaults
+    if SA_VERSION < (2,):
+        __mapper_args__ = dict(
+            eager_defaults=True,
+        )
 
     __apispec_excludes__ = frozenset()
     __apispec_exclude_private__ = True
@@ -568,17 +569,17 @@ class BaseModel(*BASES):
             entities = (cls,)
         query = sa.select(*entities)
         if where is not None:
-            if isinstance(where, (tuple, list)):
-                query = query.where(*where)
-            else:
-                query = query.where(where)
+            if not isinstance(where, Sequence):
+                where = (where,)
+            query = query.where(*where)
         if group_by is not None:
-            query = query.group_by(group_by)
+            if not isinstance(group_by, Sequence):
+                group_by = (group_by,)
+            query = query.group_by(*group_by)
         if order_by is not None:
-            if isinstance(order_by, (tuple, list)):
-                query = query.order_by(*order_by)
-            else:
-                query = query.order_by(order_by)
+            if not isinstance(order_by, Sequence):
+                order_by = (order_by,)
+            query = query.order_by(*order_by)
         if offset is not None:
             query = query.offset(offset)
         if limit is not None:
@@ -812,6 +813,12 @@ class BaseModel(*BASES):
         return await self.update(**attrs)
 
 
+class BaseModel(BaseModelMixin, Base):
+    """Base model for all SQLAlchemy models"""
+
+    __abstract__ = True
+
+
 def populate_module_with_apispec(module, add_all=True):
    """Populate a module namespace with each BaseModel's apispec.
 
@@ -841,7 +848,7 @@ def populate_module_with_apispec(module, add_all=True):
 
    """
    for name, obj in inspect.getmembers(module):
-      if isinstance(obj, type) and issubclass(obj, BaseModel) and obj is not BaseModel:
+      if isinstance(obj, type) and issubclass(obj, BaseModelMixin) and hasattr(obj, "apispec"):
          for attr in "read", "create", "update":
             spec_name = name + attr.capitalize()
             # Add, e.g., User.apispec.read, to globals as UserRead

@@ -54,9 +54,51 @@ _CAU = contextvars.ContextVar(f"{__name__}.cau")
 
 __all__ = ["BaseUser"]
 
-
 class BaseUser:
     """A User of the system"""
+
+    _ALLOWED_AUTH = {"ANONYMOUS", "ADMIN"}
+
+    def __init__(self, _auth_name):
+
+        # enforce subclassing
+        if type(self) is BaseUser:
+            raise TypeError("Cannot instantiate BaseUser. Use a subclass")
+        # normalize to uppercase
+        auth = _auth_name.upper()
+
+        if auth not in self._ALLOWED_AUTH:
+            raise ValueError("Unknown auth name")
+
+        self._auth = auth
+
+    def __str__(self):
+        return self._auth
+
+    def __init_subclass__(cls, additional=()):
+        # normalize names to all uppercase and check against existing
+        additional = {a.upper() for a in additional}
+        if same := (additional & cls._ALLOWED_AUTH):
+            raise RuntimeError(f"Programming error: cannot reuse {same} as permission names")
+
+        # set allowed auth on the new class
+        cls._ALLOWED_AUTH = cls._ALLOWED_AUTH | additional
+
+    def __getattr__(self, name):
+        """Check for is_* attributes, e.g., is_admin, is_anonymous"""
+        # note: must be all lowercase to avoid, e.g., is_AdMiN
+        if name.startswith("is_") and name == name.lower():
+            # normalize to uppercase
+            auth_name = name[3:].upper()
+            # only if this is a known auth
+            if auth_name in self._ALLOWED_AUTH:
+                # compute and stash on instance
+                result = self._auth == auth_name
+                setattr(self, name, result)
+                return result
+
+        raise AttributeError(f"No such attribute '{name}'")
+
 
     def __enter__(self):
         """Set this user as the CAU in execution of the context"""
@@ -76,18 +118,6 @@ class BaseUser:
         stack = _CAU.get()
         stack.pop()
 
-    @property
-    def is_admin(self):
-        """Is this user an admin?"""
-        # by default, no
-        return False
-
-    @property
-    def is_anonymous(self):
-        """Is this user an anonymous user?"""
-        # by default, yes
-        return True
-
     @classmethod
     def current_authenticated_user(cls):
         """Return the Current Authenticated User.
@@ -101,24 +131,17 @@ class BaseUser:
             stack = _CAU.get()
             return stack[-1]
         except (IndexError, LookupError):
-            return cls.ANONYMOUS
+            return cls.gen_anonymous_user()
 
+    # shorthand
+    cau = current_authenticated_user
 
-class BOOTSTRAP(BaseUser):
-    """Our singleton bootstrap (admin) user"""
+    @classmethod
+    def gen_anonymous_user(cls):
+        """Create a BaseUser instance that is anonymous"""
+        return cls("ANONYMOUS")
 
-    @property
-    def is_admin(self):
-        """Is this user an admin?"""
-        return True
-
-    @property
-    def is_anonymous(self):
-        """Is this user an anonymous user?"""
-        return False
-
-
-BaseUser.ANONYMOUS = BaseUser()
-BaseUser.BOOTSTRAP = BOOTSTRAP()
-
-del BOOTSTRAP
+    @classmethod
+    def gen_admin_user(cls):
+        """Create a BaseUser instance that is an admin"""
+        return cls("ADMIN")
