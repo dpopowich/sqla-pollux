@@ -1,6 +1,6 @@
 [project]
 name = "sqla-pollux"
-version = "0.17.0"
+version = "0.18.0"
 description = "Write your python ORMs once: from SQLAlchemy through your pydantic-validated REST API."
 readme = "README.md"
 license = "MIT"
