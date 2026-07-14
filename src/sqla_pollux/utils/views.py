@@ -12,8 +12,8 @@ from sqlalchemy.schema import DDLElement
 
 # views created by create_view() are modeled by a Table instance. We
 # use a MetaData instance disassociated from the application's, so these
-# tables are not created/dropped.
-_VIEW_METADATA = sa.MetaData()
+# tables are not created/dropped with create_all()/drop_all()
+_VIEW_METADATA = {}
 # used to ensure no duplicate view names
 _VIEWS = set()
 # sentinel
@@ -103,11 +103,17 @@ def _make_column(col):
    args = [col.name, col.type]
    kwargs = {}
 
-   # if Label, use the underlying element to determine the kwargs
+   # if Label, use the underlying element to determine the kwargs, except for `key`
    if isinstance(col, sa.Label):
       col = col.element
+   else:
+      # NOTE: we ignore 'key' for Labels
+      kwargs["key"] = col.key
 
-   for attr in ("default", "nullable", "info"):
+   # get the real Column
+   col = list(col.base_columns)[0]
+
+   for attr in ("default", "info", "nullable"):
       if (val := getattr(col, attr, MISSING)) is not MISSING:
          kwargs[attr] = val
 
@@ -124,7 +130,7 @@ def create_view(func=None, *, name, metadata, primary_key, check=False, cascade=
       check (bool) - If True (default: False) add "WITH CHECK OPTION" on creation of the view.
       cascade (bool) - If True (default: False) on drop of the view, add "CASCADE"
 
-   The decorated function must return a selectable. This decorator
+   The decorated function must return a selectable (sqlalchemy `Select` instance). This decorator
    will return a Table which can be used with the ORM:
 
       @create_view(name="myview", BaseModel.metadata)
@@ -152,13 +158,18 @@ def create_view(func=None, *, name, metadata, primary_key, check=False, cascade=
       raise ValueError(f"View {name} already created in schema")
    _VIEWS.add(dedup)
 
+   # create a different MetaData instance for this metadata's schema
+   try:
+      view_md = _VIEW_METADATA[metadata.schema]
+   except KeyError:
+      view_md = _VIEW_METADATA[metadata.schema] = sa.MetaData(schema=metadata.schema)
+
    # call the decorated callable to get the selectable
    selectable = func()
 
    # The *args to Table() for the generated table that represents the
    # view. We copy the columns from the selectable; this disassociates
    # the existing columns from their parent.
-   col = lambda c: c if isinstance(c, sa.Column) else c.element
    view_args = [_make_column(c) for c in selectable.selected_columns]
 
    # add primary key(s)
@@ -167,7 +178,7 @@ def create_view(func=None, *, name, metadata, primary_key, check=False, cascade=
    view_args.append(sa.PrimaryKeyConstraint(*primary_key))
 
    # create the view - NB: not adding to our metadata - we don't want this table created by sqla
-   view = sa.Table(name, _VIEW_METADATA, *view_args)
+   view = sa.Table(name, view_md, *view_args)
 
    sa.event.listen(metadata, "after_create", CreateView(name, selectable, check=check, schema=metadata.schema))
    sa.event.listen(metadata, "before_drop", DropView(name, cascade=cascade, schema=metadata.schema))
