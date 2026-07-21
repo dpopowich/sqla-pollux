@@ -42,6 +42,17 @@ class ApiSpec(BaseModel):
     update: bool = Field(True, description="If True, allow column in Model.update()")
     fld_kwargs: dict = Field({}, description="Extra kwargs to pass to pydantic.Field()")
 
+    def copy_perms(self, **kwargs):
+        """Return a new ApiSpec with permissions based on this one.
+
+        Args -
+           kwargs - used as init kwargs with create, read, and update overridden based on this instance.
+
+        """
+        kwargs["create"] = self.create
+        kwargs["read"] = self.read
+        kwargs["update"] = self.update
+        return ApiSpec(**kwargs)
 
 def apispec(
     *,

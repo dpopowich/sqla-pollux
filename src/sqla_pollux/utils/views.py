@@ -103,19 +103,23 @@ def _make_column(col):
    args = [col.name, col.type]
    kwargs = {}
 
-   # if Label, use the underlying element to determine the kwargs, except for `key`
+   # if Label, use the underlying element to determine the kwargs;
+   # Note: this column's key will default to the label name
    if isinstance(col, sa.Label):
       col = col.element
    else:
-      # NOTE: we ignore 'key' for Labels
+      # otherwise force key to the existing column's key
       kwargs["key"] = col.key
 
-   # get the real Column
+   # get the real Column to fetch original default and nullable
    col = list(col.base_columns)[0]
-
-   for attr in ("default", "info", "nullable"):
+   for attr in ("default", "nullable"):
       if (val := getattr(col, attr, MISSING)) is not MISSING:
          kwargs[attr] = val
+
+   # copy original apispec perms
+   if (apispec := col.info.get("apispec")) is not None:
+      kwargs["info"] = {"apispec": apispec.copy_perms()}
 
    return sa.Column(*args, **kwargs)
 
