@@ -8,6 +8,7 @@ import enum
 import inspect
 import json
 import re
+import threading
 
 # venv imports
 from sqlalchemy import (
@@ -48,23 +49,16 @@ AFTER_FLUSH_POSTEXEC_QUEUE = "after_flush_postexec_queue"
 # for large inserts (e.g. CSV uploads)
 MAX_SQL_QUERY_ARGUMENTS = 4000
 
+# thread-local data
+_local = threading.local()
 
 # ORM base class
 class Base(DeclarativeBase):
     """Default base for ORM"""
     pass
 
-# session factory - bound to engine in sqla_init() which must be called on
-# application initialization prior to first database access
-SessionFactory = sessionmaker(
-    expire_on_commit=False, autoflush=False, class_=AsyncSession, future=True
-)
-
 # our per-task database session - keyed on current task's name
 dbsession = contextvars.ContextVar(f"{__name__}.dbsession")
-
-# engine - set by sqla_init()
-_ENGINE = None
 
 
 class SqlaJSON:
@@ -156,7 +150,7 @@ def new_dbsession():
     NB: this context manager will set the `dbsession` contextvar
     defined in this module and reset when exiting the context.
     """
-    session = SessionFactory()
+    session = _local.SessionFactory()
     token = dbsession.set(session)
     try:
         yield session
@@ -203,28 +197,27 @@ async def new_isolated_trx(user=None):
                     yield sess
 
 
-def sqla_init(uri, **engine):
+def sqla_init(uri, **engine_init):
     """Initialize sqla engine, binding it to the session factory.
 
     Returns - the initialized engine instance.
     """
-    # pylint: disable=global-statement
-    global _ENGINE
     # create async engine
-    _ENGINE = create_async_engine(
-        uri, json_serializer=SqlaJSON.dumps, json_deserializer=SqlaJSON.loads, **engine
+    _local.ENGINE = engine = create_async_engine(
+        uri, json_serializer=SqlaJSON.dumps, json_deserializer=SqlaJSON.loads, **engine_init
+    )
+    # session factory - bound to _local.ENGINE
+    _local.SessionFactory = sessionmaker(
+        bind=engine, expire_on_commit=False, autoflush=False, class_=AsyncSession, future=True
     )
 
-    # bind our db session to engine
-    SessionFactory.configure(bind=_ENGINE)
-
-    return _ENGINE
+    return engine
 
 
 async def run_sync(fn, *args, **kwargs):
     """Convenience for calling .run_sync() on our configured AsyncConnection within a transaction"""
     # async engine
-    async with _ENGINE.begin() as conn:
+    async with _local.ENGINE.begin() as conn:
         return await conn.run_sync(fn, *args, **kwargs)
 
 
