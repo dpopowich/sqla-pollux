@@ -12,6 +12,9 @@ docker run --rm \
        -p ${PGPORT}:5432 \
        -d postgres:17-alpine
 
+# list container just started
+docker ps -l
+
 # set trap on exit to clean up docker
 docker-stop() {
     docker stop $CNAME

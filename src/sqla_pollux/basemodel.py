@@ -599,7 +599,7 @@ class BaseModelMixin(*BASES):
         model should NOT be deleted, it will raise an exception
         (exceptions.CannotDeleteModel is a good candidate) See also: _delete().
 
-        Be default this is a no-op, but may be overridden to implement
+        By default this is a no-op, but may be overridden to implement
         conditional deleting.
         """
         pass
@@ -629,8 +629,9 @@ class BaseModelMixin(*BASES):
         Args -
 
            force - when True (default: False) do the deletion (and all
-                   related cascades).  When False, raise
-                   NeedsConfirmation with dict returned from `compute_related()`.
+                   related cascades). When False first call
+                   _can_delete_conditionally() which may prevent
+                   deletion based on business logic.
 
         NB: This is the method to override in subclasses to
             conditionally process the deletion of instances (not the
@@ -639,17 +640,13 @@ class BaseModelMixin(*BASES):
            1. Call super()._delete(...)
            2. No flushing!  (Though low-level calls with .execute() are OK.)
 
-        NB: Some users only have permission to *safely* delete data,
-            meaning the data being deleted may not cause any related
-            data to be deleted (see __can_delete_noref__).  Also, a call
-            to self._can_delete_conditionally() is made to see if the
-            instance is in a state that should prevent conditional
-            deletion.
+        NB: See: _can_delete_conditionally() and _soft_delete() which affect deletion.
 
         Returns - None
 
         """
-        await self._can_delete_conditionally()
+        if not force:
+            await self._can_delete_conditionally()
 
         if not await self._soft_delete():
             await dbsession.get().delete(self)
